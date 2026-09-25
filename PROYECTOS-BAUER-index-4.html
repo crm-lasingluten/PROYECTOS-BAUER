@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proyectos · Módulo de Gestión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --ink:#1B2A33; --muted:#5E6E77; --line:#D6DEE1; --bg:#F3F6F7; --card:#FFFFFF;
+  --pri:#0E5A63; --pri-2:#E3F0F1; --gasto:#A6402F; --gasto-bg:#F8E9E6;
+  --inv:#9A6A12; --inv-bg:#F7EEDB; --ok:#2F7A4B;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+header{background:var(--pri);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font-size:20px;margin:0;font-weight:600}
+header .sp{flex:1}
+header a{color:#fff;opacity:.85;text-decoration:none;font-size:14px}
+header a:hover{opacity:1;text-decoration:underline}
+.user{font-size:14px;opacity:.9}
+nav.tabs{display:flex;gap:4px;padding:0 24px;background:var(--pri)}
+nav.tabs button{background:transparent;border:0;color:#fff;opacity:.75;padding:10px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-weight:500}
+nav.tabs button.on{background:var(--bg);color:var(--pri);opacity:1}
+main{max-width:1280px;margin:0 auto;padding:20px 24px 60px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#fff}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.btn{border:1px solid var(--pri);background:var(--pri);color:#fff;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn.ghost{background:#fff;color:var(--pri)}
+.btn.danger{background:#fff;color:var(--gasto);border-color:var(--gasto)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row .sp{flex:1}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.tot{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--pri);border-radius:8px;padding:10px 14px}
+.tot.g{border-left-color:var(--gasto)} .tot.i{border-left-color:var(--inv)}
+.tot small{color:var(--muted);font-size:13px}
+.tot b{display:block;font-size:22px;font-variant-numeric:tabular-nums;font-weight:600}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--muted);border-bottom:2px solid var(--line);padding:8px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--pri-2)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tfoot td{font-weight:600;border-top:2px solid var(--line)}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--pri-2);color:var(--pri)}
+.badge.gasto{background:var(--gasto-bg);color:var(--gasto)}
+.badge.inversion{background:var(--inv-bg);color:var(--inv)}
+.badge.finalizado{background:#E4F2E9;color:var(--ok)}
+.badge.en_pausa{background:#EEE;color:#555}
+.badge.cancelado{background:#F1E4E4;color:#7A3030}
+.badge.idea{background:#EAE8F5;color:#4B4390}
+.muted{color:var(--muted)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.hidden{display:none!important}
+.proj-head{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.proj-head h2{margin:0 0 4px;font-size:22px}
+.proj-head .code{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.subtabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:14px 0 16px;flex-wrap:wrap}
+.subtabs button{border:0;background:none;padding:8px 12px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-weight:500}
+.subtabs button.on{color:var(--pri);border-bottom-color:var(--pri)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.full{grid-column:1/-1}
+.timeline{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);margin-left:6px}
+.timeline li{position:relative;padding:0 0 16px 18px}
+.timeline li::before{content:"";position:absolute;left:-7px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--pri)}
+.timeline .when{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.timeline .what{white-space:pre-wrap}
+.adjs{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.adj{position:relative;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;width:120px;font-size:12px}
+.adj a{display:block;color:var(--ink);text-decoration:none}
+.adj img{display:block;width:120px;height:90px;object-fit:cover;background:var(--pri-2)}
+.adj .pdf{display:flex;align-items:center;justify-content:center;width:120px;height:90px;background:var(--gasto-bg);color:var(--gasto);font-weight:700;font-size:18px;letter-spacing:.05em}
+.adj .nm{padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adj .x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(27,42,51,.75);color:#fff;cursor:pointer;line-height:24px;padding:0;font-size:15px}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:12px;text-align:center;color:var(--muted);cursor:pointer;background:#FAFCFC}
+.drop.over{border-color:var(--pri);background:var(--pri-2)}
+.pend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.pend span{display:inline-flex;align-items:center;gap:6px;background:var(--pri-2);color:var(--pri);border-radius:99px;padding:3px 4px 3px 10px;font-size:13px}
+.pend button{border:0;background:none;cursor:pointer;color:var(--pri);font-size:16px;line-height:1;padding:0 4px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.bar{height:8px;background:var(--pri-2);border-radius:4px;overflow:hidden;min-width:60px}
+.bar span{display:block;height:100%;background:var(--pri)}
+dialog{border:0;border-radius:12px;padding:0;width:min(640px,94vw);box-shadow:0 12px 40px rgba(20,40,50,.25)}
+dialog::backdrop{background:rgba(20,35,45,.45)}
+dialog form{padding:20px}
+dialog h3{margin:0 0 14px}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99}
+#toast.show{opacity:1}
+.lock{max-width:460px;margin:80px auto;text-align:center}
+@media (max-width:760px){.grid2,.grid3,.split{grid-template-columns:1fr} main{padding:14px}}
+#printReport{display:none}
+.rep{font-size:12.5px;color:#000;line-height:1.4}
+.rep .rh{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--pri);padding-bottom:8px;margin-bottom:14px;gap:16px}
+.rep .rh h1{font-size:20px;margin:2px 0 0}
+.rep .rh .t{font-size:12px;color:var(--pri);font-weight:600}
+.rep .rh .em{font-size:11px;color:#444;text-align:right}
+.rep h2{font-size:14px;color:var(--pri);margin:18px 0 6px;border-bottom:1px solid #bbb;padding-bottom:3px;break-after:avoid}
+.rep dl{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 12px;margin:0}
+.rep dt{color:#555} .rep dd{margin:0;font-weight:500}
+.rep .desc{white-space:pre-wrap}
+.rep table{font-size:12px} .rep th,.rep td{padding:4px 6px}
+.rep .acc{border-left:3px solid var(--pri);padding:2px 0 2px 10px;margin:0 0 10px;break-inside:avoid}
+.rep .acc .f{font-weight:600}
+.rep .acc .d{white-space:pre-wrap;margin-top:2px}
+.rep .fotos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.rep .fotos img{width:150px;height:110px;object-fit:cover;border:1px solid #ccc}
+.rep .docs{margin-top:4px;font-size:11.5px;color:#333}
+.rep .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rep .kpis div{border:1px solid #bbb;padding:6px 8px}
+.rep .kpis small{display:block;color:#555;font-size:11px}
+.rep .kpis b{font-size:15px;font-variant-numeric:tabular-nums}
+.rep .pie{margin-top:24px;font-size:10.5px;color:#666;border-top:1px solid #ccc;padding-top:6px}
+@media print{
+  @page{margin:14mm 12mm}
+  body.rep-mode > *:not(#printReport){display:none!important}
+  body.rep-mode #printReport{display:block!important}
+  header,nav.tabs,.no-print,.subtabs,.btn{display:none!important}
+  body{background:#fff} .panel{border:0;padding:0} .print-all .sec{display:block!important;margin-bottom:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Proyectos</h1>
+  <span class="sp"></span>
+  <span class="user" id="lblUser"></span>
+  <a href="#" id="lnkHub">Volver al Módulo de Gestión</a>
+</header>
+<nav class="tabs no-print">
+  <button class="on" data-tab="tabProyectos">Proyectos</button>
+  <button data-tab="tabConsulta">Consulta de costos</button>
+</nav>
+
+<main>
+  <div id="lockScreen" class="lock hidden">
+    <h2>Acceso restringido</h2>
+    <p class="muted">Iniciá sesión en el Módulo de Gestión con un usuario que tenga permiso para Proyectos.</p>
+    <a class="btn" id="lnkHub2" href="#">Ir al Módulo de Gestión</a>
+  </div>
+
+  <!-- ============ TAB: LISTA DE PROYECTOS ============ -->
+  <section id="tabProyectos">
+    <div id="listView">
+      <div class="panel no-print">
+        <div class="filters">
+          <div><label for="fTexto">Buscar</label><input id="fTexto" placeholder="Nombre, código o descripción"></div>
+          <div><label for="fEstado">Estado</label>
+            <select id="fEstado"><option value="">Todos</option></select></div>
+          <div><label for="fMarca">Marca</label>
+            <select id="fMarca"><option value="">Todas</option></select></div>
+          <div><label for="fLider">Líder</label>
+            <select id="fLider"><option value="">Todos</option></select></div>
+          <div><label for="fTercero">Cliente / fabricante</label><input id="fTercero" placeholder="Nombre"></div>
+          <div><label for="fDesde">Inicio desde</label><input type="date" id="fDesde"></div>
+          <div><label for="fHasta">Inicio hasta</label><input type="date" id="fHasta"></div>
+          <div class="row"><button class="btn ghost" id="btnLimpiar">Limpiar</button><button class="btn" id="btnNuevo">Nuevo proyecto</button></div>
+        </div>
+      </div>
+
+      <div class="totals" id="listTotals"></div>
+
+      <div class="panel">
+        <div class="tablewrap">
+          <table>
+            <thead><tr>
+              <th>Código</th><th>Proyecto</th><th>Marca</th><th>Líder</th><th>Estado</th>
+              <th>Inicio</th><th>Última acción</th><th class="num">Gastos</th><th class="num">Inversiones</th><th class="num">Total</th>
+            </tr></thead>
+            <tbody id="tbProyectos"></tbody>
+            <tfoot id="tfProyectos"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ DETALLE DE PROYECTO ============ -->
+    <div id="detailView" class="hidden">
+      <div class="panel" id="detailPanel">
+        <div class="proj-head">
+          <div style="flex:1;min-width:240px">
+            <div class="code" id="dCodigo"></div>
+            <h2 id="dNombre"></h2>
+            <div class="row"><span id="dEstado"></span><span class="muted" id="dMeta"></span></div>
+          </div>
+          <div class="row no-print">
+            <button class="btn ghost" id="btnVolver">Volver a la lista</button>
+            <button class="btn ghost" id="btnInfSin">Informe sin costos</button>
+            <button class="btn ghost" id="btnInfCon">Informe con costos</button>
+          </div>
+        </div>
+
+        <div class="totals" id="detTotals" style="margin-top:14px"></div>
+
+        <div class="subtabs no-print">
+          <button class="on" data-sub="secDatos">Datos</button>
+          <button data-sub="secBitacora">Bitácora de acciones</button>
+          <button data-sub="secCostos">Costos e inversiones</button>
+          <button data-sub="secTerceros">Clientes y fabricantes</button>
+        </div>
+
+        <!-- Datos -->
+        <div class="sec" id="secDatos">
+          <form id="frmProyecto" class="grid2">
+            <div class="full"><label for="pNombre">Nombre del proyecto *</label><input id="pNombre" required></div>
+            <div class="full"><label for="pDescripcion">Descripción</label><textarea id="pDescripcion" rows="5"></textarea></div>
+            <div><label for="pLider">Líder del proyecto *</label><input id="pLider" list="dlLideres" required></div>
+            <div><label for="pMarca">Marca</label><select id="pMarca"></select></div>
+            <div><label for="pEstado">Estado</label><select id="pEstado"></select></div>
+            <div><label for="pPrioridad">Prioridad</label>
+              <select id="pPrioridad"><option value="baja">Baja</option><option value="media">Media</option><option value="alta">Alta</option></select></div>
+            <div><label for="pInicio">Fecha de inicio</label><input type="date" id="pInicio"></div>
+            <div><label for="pFinPrev">Fecha fin prevista</label><input type="date" id="pFinPrev"></div>
+            <div><label for="pFinReal">Fecha fin real</label><input type="date" id="pFinReal"></div>
+            <div><label for="pPresupuesto">Presupuesto previsto (€)</label><input type="number" step="0.01" min="0" id="pPresupuesto"></div>
+            <div class="full row no-print">
+              <button type="button" class="btn danger" id="btnEliminarProy">Eliminar proyecto</button>
+              <span class="sp"></span>
+              <button type="submit" class="btn">Guardar cambios</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Bitácora -->
+        <div class="sec hidden" id="secBitacora">
+          <form id="frmAccion" class="grid3 no-print" style="margin-bottom:18px">
+            <div><label for="aFecha">Fecha</label><input type="date" id="aFecha" required></div>
+            <div><label for="aResp">Responsable</label><input id="aResp" list="dlLideres"></div>
+            <div></div>
+            <div class="full"><label for="aDesc">Acción realizada *</label><textarea id="aDesc" rows="3" required placeholder="Qué se hizo, con quién, próximos pasos…"></textarea></div>
+            <div class="full">
+              <label for="aArchivos">Respaldos (PDF o fotos, opcional)</label>
+              <div class="drop" id="aDrop" tabindex="0" role="button">Arrastrá archivos aquí o <u>hacé clic para elegir</u>. En el móvil podés sacar la foto directamente.</div>
+              <input type="file" id="aArchivos" multiple accept="application/pdf,image/*" class="hidden">
+              <div class="pend" id="aPend"></div>
+            </div>
+            <div class="full row"><span class="sp"></span><button class="btn" type="submit" id="btnRegAccion">Registrar acción</button></div>
+          </form>
+          <ul class="timeline" id="lstAcciones"></ul>
+          <input type="file" id="fileExtra" multiple accept="application/pdf,image/*" class="hidden">
+        </div>
+
+        <!-- Costos -->
+        <div class="sec hidden" id="secCostos">
+          <div class="row no-print" style="margin-bottom:12px">
+            <select id="cfTipo" style="width:auto"><option value="">Gastos e inversiones</option><option value="gasto">Solo gastos</option><option value="inversion">Solo inversiones</option></select>
+            <span class="sp"></span>
+            <button class="btn" id="btnNuevoCosto">Añadir gasto o inversión</button>
+          </div>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th>Proveedor</th><th>Factura</th><th class="num">Importe</th><th class="no-print"></th></tr></thead>
+              <tbody id="tbCostos"></tbody>
+              <tfoot id="tfCostos"></tfoot>
+            </table>
+          </div>
+          <h4 style="margin:20px 0 8px">Resumen por categoría</h4>
+          <div class="tablewrap"><table><thead><tr><th>Categoría</th><th class="num">Gastos</th><th class="num">Inversiones</th><th class="num">Total</th></tr></thead><tbody id="tbCostosCat"></tbody></table></div>
+        </div>
+
+        <!-- Terceros -->
+        <div class="sec hidden" id="secTerceros">
+          <div class="row no-print" style="margin-bottom:12px"><span class="sp"></span><button class="btn" id="btnNuevoTercero">Asociar cliente o fabricante</button></div>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Tipo</th><th>Nombre</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Notas</th><th class="no-print"></th></tr></thead>
+              <tbody id="tbTerceros"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: CONSULTA DE COSTOS ============ -->
+  <section id="tabConsulta" class="hidden">
+    <div class="panel no-print">
+      <div class="filters">
+        <div><label for="qDesde">Desde</label><input type="date" id="qDesde"></div>
+        <div><label for="qHasta">Hasta</label><input type="date" id="qHasta"></div>
+        <div><label for="qTipo">Tipo</label><select id="qTipo"><option value="">Gastos e inversiones</option><option value="gasto">Gastos</option><option value="inversion">Inversiones</option></select></div>
+        <div><label for="qProyecto">Proyecto</label><select id="qProyecto"><option value="">Todos</option></select></div>
+        <div><label for="qMarca">Marca</label><select id="qMarca"><option value="">Todas</option></select></div>
+        <div><label for="qEstado">Estado del proyecto</label><select id="qEstado"><option value="">Todos</option></select></div>
+        <div><label for="qCategoria">Categoría</label><select id="qCategoria"><option value="">Todas</option></select></div>
+        <div><label for="qProveedor">Proveedor</label><input id="qProveedor" placeholder="Nombre"></div>
+        <div class="row"><button class="btn" id="btnConsultar">Consultar</button><button class="btn ghost" id="btnCSV">Exportar CSV</button></div>
+      </div>
+    </div>
+    <div class="totals" id="qTotals"></div>
+    <div class="split">
+      <div class="panel"><h4 style="margin:0 0 10px">Por proyecto</h4><div class="tablewrap"><table><thead><tr><th>Proyecto</th><th class="num">Gastos</th><th class="num">Inversiones</th><th class="num">Total</th><th></th></tr></thead><tbody id="qPorProyecto"></tbody></table></div></div>
+      <div class="panel"><h4 style="margin:0 0 10px">Por categoría</h4><div class="tablewrap"><table><thead><tr><th>Categoría</th><th class="num">Gastos</th><th class="num">Inversiones</th><th class="num">Total</th><th></th></tr></thead><tbody id="qPorCategoria"></tbody></table></div></div>
+    </div>
+    <div class="panel"><h4 style="margin:0 0 10px">Detalle de movimientos</h4>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Fecha</th><th>Proyecto</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th>Proveedor</th><th>Factura</th><th class="num">Importe</th></tr></thead>
+        <tbody id="qDetalle"></tbody>
+      </table></div>
+    </div>
+  </section>
+</main>
+
+<datalist id="dlLideres"></datalist>
+<datalist id="dlCategorias"></datalist>
+<datalist id="dlProveedores"></datalist>
+
+<!-- Diálogo: nuevo proyecto -->
+<dialog id="dlgProyecto"><form method="dialog" id="frmNuevo">
+  <h3>Nuevo proyecto</h3>
+  <div class="grid2">
+    <div class="full"><label for="nNombre">Nombre del proyecto *</label><input id="nNombre" required></div>
+    <div class="full"><label for="nDescripcion">Descripción</label><textarea id="nDescripcion" rows="4"></textarea></div>
+    <div><label for="nLider">Líder del proyecto *</label><input id="nLider" list="dlLideres" required></div>
+    <div><label for="nMarca">Marca</label><select id="nMarca"></select></div>
+    <div><label for="nInicio">Fecha de inicio</label><input type="date" id="nInicio"></div>
+    <div><label for="nFinPrev">Fecha fin prevista</label><input type="date" id="nFinPrev"></div>
+    <div><label for="nEstado">Estado</label><select id="nEstado"></select></div>
+    <div><label for="nPresupuesto">Presupuesto previsto (€)</label><input type="number" step="0.01" min="0" id="nPresupuesto"></div>
+  </div>
+  <div class="dlg-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button class="btn" type="submit" value="ok">Crear proyecto</button></div>
+</form></dialog>
+
+<!-- Diálogo: costo -->
+<dialog id="dlgCosto"><form method="dialog" id="frmCosto">
+  <h3 id="dlgCostoTit">Añadir gasto o inversión</h3>
+  <input type="hidden" id="cId">
+  <div class="grid2">
+    <div><label for="cFecha">Fecha *</label><input type="date" id="cFecha" required></div>
+    <div><label for="cTipo">Tipo *</label><select id="cTipo" required><option value="gasto">Gasto</option><option value="inversion">Inversión</option></select></div>
+    <div><label for="cCategoria">Categoría</label><input id="cCategoria" list="dlCategorias" placeholder="Materiales, Maquinaria, Servicios…"></div>
+    <div><label for="cImporte">Importe (€) *</label><input type="number" step="0.01" min="0" id="cImporte" required></div>
+    <div class="full"><label for="cConcepto">Concepto *</label><input id="cConcepto" required></div>
+    <div><label for="cProveedor">Proveedor</label><input id="cProveedor" list="dlProveedores"></div>
+    <div><label for="cFactura">Nº factura</label><input id="cFactura"></div>
+  </div>
+  <div class="dlg-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button class="btn" type="submit" value="ok">Guardar</button></div>
+</form></dialog>
+
+<!-- Diálogo: editar acción -->
+<dialog id="dlgAccion"><form method="dialog" id="frmEditAccion">
+  <h3>Editar acción</h3>
+  <input type="hidden" id="eaId">
+  <div class="grid2">
+    <div><label for="eaFecha">Fecha *</label><input type="date" id="eaFecha" required></div>
+    <div><label for="eaResp">Responsable</label><input id="eaResp" list="dlLideres"></div>
+    <div class="full"><label for="eaDesc">Acción realizada *</label><textarea id="eaDesc" rows="6" required></textarea></div>
+  </div>
+  <p class="muted" style="font-size:13px;margin:10px 0 0">Los respaldos adjuntos se agregan o quitan directamente en la bitácora.</p>
+  <div class="dlg-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button class="btn" type="submit" value="ok">Guardar cambios</button></div>
+</form></dialog>
+
+<!-- Diálogo: tercero -->
+<dialog id="dlgTercero"><form method="dialog" id="frmTercero">
+  <h3 id="dlgTerceroTit">Asociar cliente o fabricante</h3>
+  <input type="hidden" id="tId">
+  <div class="grid2">
+    <div><label for="tTipo">Tipo *</label><select id="tTipo"><option value="cliente">Cliente</option><option value="fabricante">Fabricante</option><option value="proveedor">Proveedor</option><option value="socio">Socio</option></select></div>
+    <div><label for="tNombre">Nombre / empresa *</label><input id="tNombre" required></div>
+    <div><label for="tContacto">Persona de contacto</label><input id="tContacto"></div>
+    <div><label for="tEmail">Email</label><input type="email" id="tEmail"></div>
+    <div><label for="tTelefono">Teléfono</label><input id="tTelefono"></div>
+    <div class="full"><label for="tNotas">Notas</label><textarea id="tNotas" rows="3"></textarea></div>
+  </div>
+  <div class="dlg-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button class="btn" type="submit" value="ok">Guardar</button></div>
+</form></dialog>
+
+<div id="printReport" class="rep"></div>
+<div id="toast" role="status"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN — completar con los mismos datos que usan los otros módulos
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: 'https://lbbpnnvwtanurtjqgcqv.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiYnBubnZ3dGFudXJ0anFnY3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjM2NDEsImV4cCI6MjA5MjMzOTY0MX0.a25lrgUlzDM4TSp4c6KOCQ3ERZnSk8-5r2y9DbhRPxg',
+  HUB_URL: 'https://crm-lasingluten.github.io/bauer-lemans/', // URL del Módulo de Gestión
+  SESSION_KEY: 'bauer_session',      // misma clave que usa el hub (localStorage)
+  MODULE_KEY: 'proyectos',           // valor a incluir en el campo "modulos" del usuario
+  REQUIRE_LOGIN: true,
+  BUCKET: 'proyectos-adjuntos',     // bucket de Storage para los respaldos
+  MAX_MB: 15                         // tamaño máximo por archivo
+};
+const MARCAS = ['La Sin Gluten','Rietmann Ibérica','Bocado Functional Foods','Bauer Lemans','Otra'];
+const ESTADOS = {idea:'Idea', activo:'Activo', en_pausa:'En pausa', finalizado:'Finalizado', cancelado:'Cancelado'};
+
+const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const eur = n => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(n)||0);
+const fdate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('es-ES') : '—';
+const hoy = () => new Date().toISOString().slice(0,10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function fail(e){ console.error(e); toast('Error: ' + (e.message || e)); }
+
+let USER = null, PROYECTOS = [], ACTUAL = null, COSTOS_ACT = [], ULTIMA_CONSULTA = [];
+
+/* ---------------- Sesión (login propio del Módulo de Gestión) ---------------- */
+function getSesion(){
+  for (const store of [sessionStorage, localStorage]) {
+    try { const raw = store.getItem(CONFIG.SESSION_KEY); if (raw) return JSON.parse(raw); } catch(e){}
+  }
+  return null;
+}
+function tienePermiso(s){
+  if (!s) return false;
+  if (s.admin === true || s.admin === 'true') return true;
+  const m = s.modulos;
+  if (!m) return false;
+  const lista = Array.isArray(m) ? m : String(m).split('|');
+  return lista.map(x=>String(x).toLowerCase()).includes(CONFIG.MODULE_KEY);
+}
+
+/* ---------------- Inicio ---------------- */
+function llenarSelect(sel, pares, conVacio){
+  sel.innerHTML = (conVacio ? `<option value="">${conVacio}</option>` : '') +
+    pares.map(([v,t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+}
+function init(){
+  $('lnkHub').href = $('lnkHub2').href = CONFIG.HUB_URL;
+  const s = getSesion();
+  if (CONFIG.REQUIRE_LOGIN && !tienePermiso(s)) {
+    document.querySelectorAll('main > section, nav.tabs').forEach(e=>e.classList.add('hidden'));
+    $('lockScreen').classList.remove('hidden');
+    return;
+  }
+  USER = s ? (s.nombre || s.usuario || s.email || '') : '';
+  $('lblUser').textContent = USER;
+
+  const est = Object.entries(ESTADOS), mar = MARCAS.map(m=>[m,m]);
+  llenarSelect($('fEstado'), est, 'Todos'); llenarSelect($('qEstado'), est, 'Todos');
+  llenarSelect($('fMarca'), mar, 'Todas'); llenarSelect($('qMarca'), mar, 'Todas');
+  llenarSelect($('pMarca'), mar); llenarSelect($('nMarca'), mar);
+  llenarSelect($('pEstado'), est); llenarSelect($('nEstado'), est);
+  $('nEstado').value = 'activo';
+
+  // pestañas principales
+  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on', x===b));
+    ['tabProyectos','tabConsulta'].forEach(id => $(id).classList.toggle('hidden', id!==b.dataset.tab));
+    if (b.dataset.tab==='tabConsulta') consultar();
+  });
+  // sub-pestañas del detalle
+  document.querySelectorAll('.subtabs button').forEach(b => b.onclick = () => mostrarSub(b.dataset.sub));
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+
+  ['fTexto','fTercero'].forEach(id => $(id).oninput = renderLista);
+  ['fEstado','fMarca','fLider','fDesde','fHasta'].forEach(id => $(id).onchange = renderLista);
+  $('btnLimpiar').onclick = () => { ['fTexto','fEstado','fMarca','fLider','fTercero','fDesde','fHasta'].forEach(id=>$(id).value=''); renderLista(); };
+  $('btnNuevo').onclick = () => { $('frmNuevo').reset(); $('nInicio').value=hoy(); $('nEstado').value='activo'; $('nLider').value=USER; $('dlgProyecto').showModal(); };
+  $('frmNuevo').onsubmit = crearProyecto;
+  $('frmProyecto').onsubmit = guardarProyecto;
+  $('btnEliminarProy').onclick = eliminarProyecto;
+  $('btnVolver').onclick = volverLista;
+  $('btnInfSin').onclick = () => generarInforme(false);
+  $('btnInfCon').onclick = () => generarInforme(true);
+  $('frmAccion').onsubmit = agregarAccion;
+  $('frmEditAccion').onsubmit = guardarEdicionAccion;
+  $('aDrop').onclick = () => $('aArchivos').click();
+  $('aDrop').onkeydown = e => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); $('aArchivos').click(); } };
+  $('aArchivos').onchange = e => { sumarPendientes(e.target.files); e.target.value=''; };
+  ['dragover','dragenter'].forEach(ev => $('aDrop').addEventListener(ev, e => { e.preventDefault(); $('aDrop').classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => $('aDrop').addEventListener(ev, e => { e.preventDefault(); $('aDrop').classList.remove('over'); }));
+  $('aDrop').addEventListener('drop', e => sumarPendientes(e.dataTransfer.files));
+  $('fileExtra').onchange = async e => { const files=[...e.target.files]; e.target.value=''; if (ADJ_DESTINO && files.length) { toast('Subiendo…'); const n = await subirAdjuntos(ADJ_DESTINO, files); toast(n+' archivo(s) adjuntado(s)'); cargarAcciones(); } };
+  $('btnNuevoCosto').onclick = () => abrirCosto();
+  $('frmCosto').onsubmit = guardarCosto;
+  $('cfTipo').onchange = renderCostos;
+  $('btnNuevoTercero').onclick = () => abrirTercero();
+  $('frmTercero').onsubmit = guardarTercero;
+  $('btnConsultar').onclick = consultar;
+  $('btnCSV').onclick = exportarCSV;
+
+  cargarProyectos();
+  cargarSugerencias();
+}
+
+/* ---------------- Lista de proyectos ---------------- */
+async function cargarProyectos(){
+  const { data, error } = await sb.from('proy_v_resumen').select('*').order('created_at',{ascending:false});
+  if (error) return fail(error);
+  PROYECTOS = data || [];
+  const lideres = [...new Set(PROYECTOS.map(p=>p.lider).filter(Boolean))].sort();
+  const cur = $('fLider').value;
+  llenarSelect($('fLider'), lideres.map(l=>[l,l]), 'Todos'); $('fLider').value = cur;
+  $('dlLideres').innerHTML = lideres.map(l=>`<option value="${esc(l)}">`).join('');
+  const curP = $('qProyecto').value;
+  llenarSelect($('qProyecto'), PROYECTOS.map(p=>[p.id, `${p.codigo} · ${p.nombre}`]), 'Todos'); $('qProyecto').value = curP;
+  renderLista();
+}
+function filtrarProyectos(){
+  const tx = $('fTexto').value.trim().toLowerCase(), te = $('fTercero').value.trim().toLowerCase();
+  const es = $('fEstado').value, ma = $('fMarca').value, li = $('fLider').value, de = $('fDesde').value, ha = $('fHasta').value;
+  return PROYECTOS.filter(p =>
+    (!tx || [p.nombre,p.codigo,p.descripcion].join(' ').toLowerCase().includes(tx)) &&
+    (!te || (p.terceros||'').toLowerCase().includes(te)) &&
+    (!es || p.estado===es) && (!ma || p.marca===ma) && (!li || p.lider===li) &&
+    (!de || (p.fecha_inicio && p.fecha_inicio>=de)) && (!ha || (p.fecha_inicio && p.fecha_inicio<=ha))
+  );
+}
+function tarjetasTotales(el, g, i, extra){
+  el.innerHTML = (extra||'') +
+    `<div class="tot g"><small>Gastos</small><b>${eur(g)}</b></div>
+     <div class="tot i"><small>Inversiones</small><b>${eur(i)}</b></div>
+     <div class="tot"><small>Total</small><b>${eur(g+i)}</b></div>`;
+}
+function renderLista(){
+  const lista = filtrarProyectos();
+  const g = lista.reduce((s,p)=>s+Number(p.total_gastos),0), i = lista.reduce((s,p)=>s+Number(p.total_inversiones),0);
+  const activos = lista.filter(p=>p.estado==='activo').length;
+  tarjetasTotales($('listTotals'), g, i, `<div class="tot"><small>Proyectos (${activos} activos)</small><b>${lista.length}</b></div>`);
+  $('tbProyectos').innerHTML = lista.length ? lista.map(p => `
+    <tr class="click" data-id="${p.id}" tabindex="0">
+      <td class="muted">${esc(p.codigo)}</td>
+      <td><b>${esc(p.nombre)}</b>${p.terceros?`<div class="muted" style="font-size:13px">${esc(p.terceros)}</div>`:''}</td>
+      <td>${esc(p.marca||'—')}</td><td>${esc(p.lider)}</td>
+      <td><span class="badge ${p.estado}">${ESTADOS[p.estado]||p.estado}</span></td>
+      <td>${fdate(p.fecha_inicio)}</td><td>${fdate(p.ultima_accion)}</td>
+      <td class="num">${eur(p.total_gastos)}</td><td class="num">${eur(p.total_inversiones)}</td><td class="num"><b>${eur(p.total_general)}</b></td>
+    </tr>`).join('') : `<tr><td colspan="10" class="empty">No hay proyectos con estos filtros. Probá limpiar los filtros o creá uno nuevo.</td></tr>`;
+  $('tfProyectos').innerHTML = lista.length ? `<tr><td colspan="7">Total (${lista.length} proyectos)</td><td class="num">${eur(g)}</td><td class="num">${eur(i)}</td><td class="num">${eur(g+i)}</td></tr>` : '';
+  document.querySelectorAll('#tbProyectos tr.click').forEach(tr => {
+    tr.onclick = () => abrirProyecto(+tr.dataset.id);
+    tr.onkeydown = e => { if (e.key==='Enter') abrirProyecto(+tr.dataset.id); };
+  });
+}
+
+/* ---------------- Crear / editar proyecto ---------------- */
+async function crearProyecto(e){
+  e.preventDefault();
+  const row = {
+    nombre: $('nNombre').value.trim(), descripcion: $('nDescripcion').value.trim() || null,
+    lider: $('nLider').value.trim(), marca: $('nMarca').value, estado: $('nEstado').value,
+    fecha_inicio: $('nInicio').value || null, fecha_fin_prev: $('nFinPrev').value || null,
+    presupuesto: Number($('nPresupuesto').value) || 0, creado_por: USER
+  };
+  const { data, error } = await sb.from('proy_proyectos').insert(row).select().single();
+  if (error) return fail(error);
+  $('dlgProyecto').close(); toast('Proyecto creado: ' + data.codigo);
+  await cargarProyectos(); abrirProyecto(data.id);
+}
+async function abrirProyecto(id){
+  const { data, error } = await sb.from('proy_v_resumen').select('*').eq('id', id).single();
+  if (error) return fail(error);
+  ACTUAL = data;
+  $('listView').classList.add('hidden'); $('detailView').classList.remove('hidden');
+  pintarCabecera();
+  $('pNombre').value = data.nombre; $('pDescripcion').value = data.descripcion || '';
+  $('pLider').value = data.lider; $('pMarca').value = data.marca || MARCAS[0];
+  $('pEstado').value = data.estado; $('pPrioridad').value = data.prioridad || 'media';
+  $('pInicio').value = data.fecha_inicio || ''; $('pFinPrev').value = data.fecha_fin_prev || '';
+  $('pFinReal').value = data.fecha_fin_real || ''; $('pPresupuesto').value = data.presupuesto || '';
+  $('aFecha').value = hoy(); $('aResp').value = USER; PENDIENTES = []; pintarPendientes();
+  mostrarSub('secDatos');
+  cargarAcciones(); cargarCostos(); cargarTerceros();
+  window.scrollTo(0,0);
+}
+function pintarCabecera(){
+  const p = ACTUAL;
+  $('dCodigo').textContent = p.codigo; $('dNombre').textContent = p.nombre;
+  $('dEstado').innerHTML = `<span class="badge ${p.estado}">${ESTADOS[p.estado]}</span>`;
+  $('dMeta').textContent = `Líder: ${p.lider}  |  ${p.marca || 'Sin marca'}  |  Inicio ${fdate(p.fecha_inicio)}` + (p.fecha_fin_prev ? `  |  Fin previsto ${fdate(p.fecha_fin_prev)}` : '');
+}
+async function pintarTotalesDetalle(){
+  const g = COSTOS_ACT.filter(c=>c.tipo==='gasto').reduce((s,c)=>s+Number(c.importe),0);
+  const i = COSTOS_ACT.filter(c=>c.tipo==='inversion').reduce((s,c)=>s+Number(c.importe),0);
+  const pres = Number(ACTUAL.presupuesto)||0;
+  const extra = pres ? `<div class="tot"><small>Presupuesto usado</small><b>${Math.round((g+i)/pres*100)}%</b><div class="bar" style="margin-top:6px"><span style="width:${Math.min(100,(g+i)/pres*100)}%"></span></div><small>de ${eur(pres)}</small></div>` : '';
+  tarjetasTotales($('detTotals'), g, i, extra);
+}
+function mostrarSub(id){
+  document.querySelectorAll('.subtabs button').forEach(b=>b.classList.toggle('on', b.dataset.sub===id));
+  document.querySelectorAll('#detailPanel .sec').forEach(s=>s.classList.toggle('hidden', s.id!==id));
+}
+async function guardarProyecto(e){
+  e.preventDefault();
+  const upd = {
+    nombre: $('pNombre').value.trim(), descripcion: $('pDescripcion').value.trim() || null,
+    lider: $('pLider').value.trim(), marca: $('pMarca').value, estado: $('pEstado').value,
+    prioridad: $('pPrioridad').value, fecha_inicio: $('pInicio').value || null,
+    fecha_fin_prev: $('pFinPrev').value || null, fecha_fin_real: $('pFinReal').value || null,
+    presupuesto: Number($('pPresupuesto').value) || 0
+  };
+  const { error } = await sb.from('proy_proyectos').update(upd).eq('id', ACTUAL.id);
+  if (error) return fail(error);
+  Object.assign(ACTUAL, upd); pintarCabecera(); pintarTotalesDetalle();
+  toast('Cambios guardados'); cargarProyectos();
+}
+async function eliminarProyecto(){
+  if (!confirm(`¿Eliminar "${ACTUAL.nombre}"? Se borran también su bitácora, respaldos adjuntos, costos y contactos asociados. No se puede deshacer.`)) return;
+  const { data: adj } = await sb.from('proy_adjuntos').select('ruta').eq('proyecto_id', ACTUAL.id);
+  if (adj && adj.length) await sb.storage.from(CONFIG.BUCKET).remove(adj.map(a=>a.ruta));
+  const { error } = await sb.from('proy_proyectos').delete().eq('id', ACTUAL.id);
+  if (error) return fail(error);
+  toast('Proyecto eliminado'); volverLista();
+}
+function volverLista(){ ACTUAL=null; $('detailView').classList.add('hidden'); $('listView').classList.remove('hidden'); cargarProyectos(); }
+
+/* ---------------- Bitácora ---------------- */
+let PENDIENTES = [], ADJ_DESTINO = null, ADJ_ACT = [], ACC_ACT = [];
+const esImg = t => /^image\//.test(t||'');
+const kb = n => n > 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB';
+
+function sumarPendientes(fileList){
+  for (const f of fileList) {
+    if (!(f.type==='application/pdf' || esImg(f.type))) { toast(`"${f.name}" no es PDF ni imagen`); continue; }
+    if (f.type==='application/pdf' && f.size > CONFIG.MAX_MB*1048576) { toast(`"${f.name}" supera ${CONFIG.MAX_MB} MB`); continue; }
+    PENDIENTES.push(f);
+  }
+  pintarPendientes();
+}
+function pintarPendientes(){
+  $('aPend').innerHTML = PENDIENTES.map((f,i)=>`<span>${esc(f.name)} (${kb(f.size)})<button type="button" aria-label="Quitar" onclick="quitarPendiente(${i})">×</button></span>`).join('');
+}
+function quitarPendiente(i){ PENDIENTES.splice(i,1); pintarPendientes(); }
+
+// Reduce fotos grandes del móvil (máx. 1800 px, JPEG 82%) antes de subirlas
+async function comprimirImagen(file){
+  if (!esImg(file.type) || file.type==='image/gif' || file.size < 400*1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch(e) { return file; }   // si el navegador no puede leerla, se sube tal cual
+}
+function nombreSeguro(n){
+  return n.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w.\-]+/g,'_').slice(-80);
+}
+async function subirAdjuntos(accionId, files){
+  let ok = 0;
+  for (const original of files) {
+    const f = await comprimirImagen(original);
+    if (f.size > CONFIG.MAX_MB*1048576) { toast(`"${f.name}" supera ${CONFIG.MAX_MB} MB`); continue; }
+    const ruta = `proy_${ACTUAL.id}/acc_${accionId}/${Date.now()}_${Math.random().toString(36).slice(2,7)}_${nombreSeguro(f.name)}`;
+    const up = await sb.storage.from(CONFIG.BUCKET).upload(ruta, f, { contentType: f.type, upsert: false });
+    if (up.error) { fail(up.error); continue; }
+    const { error } = await sb.from('proy_adjuntos').insert({ accion_id: accionId, proyecto_id: ACTUAL.id, nombre: f.name, ruta, tipo_mime: f.type, tamano: f.size, subido_por: USER });
+    if (error) { await sb.storage.from(CONFIG.BUCKET).remove([ruta]); fail(error); continue; }
+    ok++;
+  }
+  return ok;
+}
+function adjuntarA(accionId){ ADJ_DESTINO = accionId; $('fileExtra').click(); }
+
+async function cargarAcciones(){
+  const [acc, adj] = await Promise.all([
+    sb.from('proy_acciones').select('*').eq('proyecto_id', ACTUAL.id).order('fecha',{ascending:false}).order('id',{ascending:false}),
+    sb.from('proy_adjuntos').select('*').eq('proyecto_id', ACTUAL.id).order('id')
+  ]);
+  if (acc.error) return fail(acc.error);
+  if (adj.error) console.warn('Adjuntos no disponibles (¿falta ejecutar proyectos_adjuntos.sql?)', adj.error);
+  ADJ_ACT = adj.data || [];
+  // enlaces temporales (1 hora) para ver/descargar, porque el bucket es privado
+  const urls = {};
+  if (ADJ_ACT.length) {
+    const { data: firm } = await sb.storage.from(CONFIG.BUCKET).createSignedUrls(ADJ_ACT.map(a=>a.ruta), 3600);
+    (firm||[]).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
+  }
+  const porAccion = {};
+  ADJ_ACT.forEach(a => (porAccion[a.accion_id] ||= []).push(a));
+  const data = acc.data || [];
+  ACC_ACT = data;
+  $('lstAcciones').innerHTML = data.length ? data.map(a => {
+    const lista = porAccion[a.id] || [];
+    const tarjetas = lista.map(x => {
+      const u = urls[x.ruta] || '#';
+      const vista = esImg(x.tipo_mime) ? `<img src="${u}" alt="${esc(x.nombre)}" loading="lazy">` : `<div class="pdf">PDF</div>`;
+      return `<div class="adj"><a href="${u}" target="_blank" rel="noopener" title="${esc(x.nombre)}">${vista}<div class="nm">${esc(x.nombre)}</div></a>
+        <button class="x no-print" title="Quitar adjunto" aria-label="Quitar adjunto ${esc(x.nombre)}" onclick="borrarAdjunto(${x.id})">×</button></div>`;
+    }).join('');
+    return `<li><div class="when">${fdate(a.fecha)}${a.responsable?`  |  ${esc(a.responsable)}`:''}${lista.length?`  |  ${lista.length} respaldo(s)`:''}
+      <span class="no-print" style="margin-left:8px"><button class="btn sm ghost" onclick="editarAccion(${a.id})">Editar</button>
+      <button class="btn sm ghost" onclick="adjuntarA(${a.id})">Adjuntar</button>
+      <button class="btn sm ghost" onclick="borrarAccion(${a.id})">Borrar</button></span></div>
+      <div class="what">${esc(a.descripcion)}</div>
+      ${lista.length ? `<div class="adjs">${tarjetas}</div>` : ''}</li>`;
+  }).join('')
+    : `<li class="empty" style="list-style:none">Todavía no hay acciones registradas. Anotá la primera con el formulario de arriba.</li>`;
+}
+async function agregarAccion(e){
+  e.preventDefault();
+  const btn = $('btnRegAccion'); btn.disabled = true;
+  try {
+    const row = { proyecto_id: ACTUAL.id, fecha: $('aFecha').value, responsable: $('aResp').value.trim() || null, descripcion: $('aDesc').value.trim(), creado_por: USER };
+    const { data, error } = await sb.from('proy_acciones').insert(row).select().single();
+    if (error) return fail(error);
+    let msg = 'Acción registrada';
+    if (PENDIENTES.length) {
+      btn.textContent = 'Subiendo respaldos…';
+      const total = PENDIENTES.length, n = await subirAdjuntos(data.id, PENDIENTES);
+      msg += n === total ? ` con ${n} respaldo(s)` : ` (${n} de ${total} respaldos subidos)`;
+    }
+    PENDIENTES = []; pintarPendientes(); $('aDesc').value = '';
+    toast(msg); cargarAcciones();
+  } finally { btn.disabled = false; btn.textContent = 'Registrar acción'; }
+}
+function editarAccion(id){
+  const a = ACC_ACT.find(x=>x.id===id); if (!a) return;
+  $('eaId').value = a.id; $('eaFecha').value = a.fecha; $('eaResp').value = a.responsable || ''; $('eaDesc').value = a.descripcion;
+  $('dlgAccion').showModal();
+}
+async function guardarEdicionAccion(e){
+  e.preventDefault();
+  const upd = { fecha: $('eaFecha').value, responsable: $('eaResp').value.trim() || null, descripcion: $('eaDesc').value.trim() };
+  if (!upd.descripcion) return toast('La descripción no puede quedar vacía');
+  const { error } = await sb.from('proy_acciones').update(upd).eq('id', $('eaId').value);
+  if (error) return fail(error);
+  $('dlgAccion').close(); toast('Acción actualizada'); cargarAcciones();
+}
+async function borrarAccion(id){
+  const n = ADJ_ACT.filter(a=>a.accion_id===id).length;
+  if (!confirm('¿Borrar esta acción de la bitácora?' + (n ? ` También se borran sus ${n} respaldo(s).` : ''))) return;
+  const rutas = ADJ_ACT.filter(a=>a.accion_id===id).map(a=>a.ruta);
+  if (rutas.length) await sb.storage.from(CONFIG.BUCKET).remove(rutas);
+  const { error } = await sb.from('proy_acciones').delete().eq('id', id);
+  if (error) return fail(error); cargarAcciones();
+}
+async function borrarAdjunto(id){
+  const a = ADJ_ACT.find(x=>x.id===id); if (!a) return;
+  if (!confirm(`¿Quitar el respaldo "${a.nombre}"?`)) return;
+  await sb.storage.from(CONFIG.BUCKET).remove([a.ruta]);
+  const { error } = await sb.from('proy_adjuntos').delete().eq('id', id);
+  if (error) return fail(error); toast('Respaldo quitado'); cargarAcciones();
+}
+
+/* ---------------- Costos ---------------- */
+async function cargarCostos(){
+  const { data, error } = await sb.from('proy_costos').select('*').eq('proyecto_id', ACTUAL.id).order('fecha',{ascending:false});
+  if (error) return fail(error);
+  COSTOS_ACT = data || []; renderCostos(); pintarTotalesDetalle();
+}
+function renderCostos(){
+  const f = $('cfTipo').value, lista = COSTOS_ACT.filter(c=>!f || c.tipo===f);
+  $('tbCostos').innerHTML = lista.length ? lista.map(c => `
+    <tr><td>${fdate(c.fecha)}</td><td><span class="badge ${c.tipo}">${c.tipo==='gasto'?'Gasto':'Inversión'}</span></td>
+    <td>${esc(c.categoria||'—')}</td><td>${esc(c.concepto)}</td><td>${esc(c.proveedor||'—')}</td><td>${esc(c.nro_factura||'—')}</td>
+    <td class="num">${eur(c.importe)}</td>
+    <td class="no-print" style="white-space:nowrap"><button class="btn sm ghost" onclick="abrirCosto(${c.id})">Editar</button> <button class="btn sm danger" onclick="borrarCosto(${c.id})">Borrar</button></td></tr>`).join('')
+    : `<tr><td colspan="8" class="empty">No hay importes cargados. Usá "Añadir gasto o inversión".</td></tr>`;
+  const tot = lista.reduce((s,c)=>s+Number(c.importe),0);
+  $('tfCostos').innerHTML = lista.length ? `<tr><td colspan="6">Total</td><td class="num">${eur(tot)}</td><td></td></tr>` : '';
+  const cats = agrupar(COSTOS_ACT, c=>c.categoria||'Sin categoría');
+  $('tbCostosCat').innerHTML = cats.map(r=>`<tr><td>${esc(r.clave)}</td><td class="num">${eur(r.g)}</td><td class="num">${eur(r.i)}</td><td class="num"><b>${eur(r.g+r.i)}</b></td></tr>`).join('') || `<tr><td colspan="4" class="muted">—</td></tr>`;
+}
+function abrirCosto(id){
+  $('frmCosto').reset(); $('cId').value = '';
+  if (id) {
+    const c = COSTOS_ACT.find(x=>x.id===id);
+    $('dlgCostoTit').textContent = 'Editar importe';
+    Object.entries({cId:c.id,cFecha:c.fecha,cTipo:c.tipo,cCategoria:c.categoria,cImporte:c.importe,cConcepto:c.concepto,cProveedor:c.proveedor,cFactura:c.nro_factura})
+      .forEach(([k,v])=>$(k).value = v ?? '');
+  } else { $('dlgCostoTit').textContent = 'Añadir gasto o inversión'; $('cFecha').value = hoy(); }
+  $('dlgCosto').showModal();
+}
+async function guardarCosto(e){
+  e.preventDefault();
+  const row = { proyecto_id: ACTUAL.id, fecha: $('cFecha').value, tipo: $('cTipo').value, categoria: $('cCategoria').value.trim() || null,
+    importe: Number($('cImporte').value), concepto: $('cConcepto').value.trim(), proveedor: $('cProveedor').value.trim() || null,
+    nro_factura: $('cFactura').value.trim() || null };
+  const id = $('cId').value;
+  const q = id ? sb.from('proy_costos').update(row).eq('id', id) : sb.from('proy_costos').insert({...row, creado_por: USER});
+  const { error } = await q; if (error) return fail(error);
+  $('dlgCosto').close(); toast(id ? 'Importe actualizado' : 'Importe añadido'); cargarCostos(); cargarSugerencias();
+}
+async function borrarCosto(id){
+  if (!confirm('¿Borrar este importe?')) return;
+  const { error } = await sb.from('proy_costos').delete().eq('id', id);
+  if (error) return fail(error); cargarCostos();
+}
+
+/* ---------------- Clientes / fabricantes ---------------- */
+let TERCEROS_ACT = [];
+async function cargarTerceros(){
+  const { data, error } = await sb.from('proy_terceros').select('*').eq('proyecto_id', ACTUAL.id).order('tipo').order('nombre');
+  if (error) return fail(error);
+  TERCEROS_ACT = data || [];
+  $('tbTerceros').innerHTML = TERCEROS_ACT.length ? TERCEROS_ACT.map(t => `
+    <tr><td><span class="badge">${esc(t.tipo[0].toUpperCase()+t.tipo.slice(1))}</span></td><td><b>${esc(t.nombre)}</b></td>
+    <td>${esc(t.contacto||'—')}</td><td>${t.email?`<a href="mailto:${esc(t.email)}">${esc(t.email)}</a>`:'—'}</td><td>${esc(t.telefono||'—')}</td>
+    <td style="white-space:pre-wrap">${esc(t.notas||'')}</td>
+    <td class="no-print" style="white-space:nowrap"><button class="btn sm ghost" onclick="abrirTercero(${t.id})">Editar</button> <button class="btn sm danger" onclick="borrarTercero(${t.id})">Quitar</button></td></tr>`).join('')
+    : `<tr><td colspan="7" class="empty">Este proyecto no tiene clientes ni fabricantes asociados.</td></tr>`;
+}
+function abrirTercero(id){
+  $('frmTercero').reset(); $('tId').value = '';
+  if (id) {
+    const t = TERCEROS_ACT.find(x=>x.id===id);
+    $('dlgTerceroTit').textContent = 'Editar contacto';
+    Object.entries({tId:t.id,tTipo:t.tipo,tNombre:t.nombre,tContacto:t.contacto,tEmail:t.email,tTelefono:t.telefono,tNotas:t.notas})
+      .forEach(([k,v])=>$(k).value = v ?? '');
+  } else $('dlgTerceroTit').textContent = 'Asociar cliente o fabricante';
+  $('dlgTercero').showModal();
+}
+async function guardarTercero(e){
+  e.preventDefault();
+  const row = { proyecto_id: ACTUAL.id, tipo: $('tTipo').value, nombre: $('tNombre').value.trim(), contacto: $('tContacto').value.trim() || null,
+    email: $('tEmail').value.trim() || null, telefono: $('tTelefono').value.trim() || null, notas: $('tNotas').value.trim() || null };
+  const id = $('tId').value;
+  const { error } = await (id ? sb.from('proy_terceros').update(row).eq('id', id) : sb.from('proy_terceros').insert(row));
+  if (error) return fail(error);
+  $('dlgTercero').close(); toast('Contacto guardado'); cargarTerceros();
+}
+async function borrarTercero(id){
+  if (!confirm('¿Quitar este contacto del proyecto?')) return;
+  const { error } = await sb.from('proy_terceros').delete().eq('id', id);
+  if (error) return fail(error); cargarTerceros();
+}
+
+/* ---------------- Consulta de costos (todos los proyectos) ---------------- */
+function agrupar(lista, keyFn){
+  const m = new Map();
+  lista.forEach(c => { const k = keyFn(c); const r = m.get(k) || {clave:k, g:0, i:0};
+    c.tipo==='gasto' ? r.g += Number(c.importe) : r.i += Number(c.importe); m.set(k, r); });
+  return [...m.values()].sort((a,b)=>(b.g+b.i)-(a.g+a.i));
+}
+async function consultar(){
+  let q = sb.from('proy_costos').select('*').order('fecha',{ascending:false});
+  if ($('qDesde').value) q = q.gte('fecha', $('qDesde').value);
+  if ($('qHasta').value) q = q.lte('fecha', $('qHasta').value);
+  if ($('qTipo').value) q = q.eq('tipo', $('qTipo').value);
+  if ($('qProyecto').value) q = q.eq('proyecto_id', $('qProyecto').value);
+  if ($('qCategoria').value) q = q.eq('categoria', $('qCategoria').value);
+  if ($('qProveedor').value.trim()) q = q.ilike('proveedor', `%${$('qProveedor').value.trim()}%`);
+  const { data, error } = await q; if (error) return fail(error);
+  const mapa = Object.fromEntries(PROYECTOS.map(p=>[p.id,p]));
+  const ma = $('qMarca').value, es = $('qEstado').value;
+  const lista = (data||[]).filter(c => { const p = mapa[c.proyecto_id]; return p && (!ma || p.marca===ma) && (!es || p.estado===es); })
+    .map(c => ({...c, _proy: mapa[c.proyecto_id]}));
+  ULTIMA_CONSULTA = lista;
+
+  const g = lista.filter(c=>c.tipo==='gasto').reduce((s,c)=>s+Number(c.importe),0);
+  const i = lista.filter(c=>c.tipo==='inversion').reduce((s,c)=>s+Number(c.importe),0);
+  tarjetasTotales($('qTotals'), g, i, `<div class="tot"><small>Movimientos</small><b>${lista.length}</b></div>`);
+
+  const filaBarra = (r, max) => `<td style="width:25%"><div class="bar"><span style="width:${max? (r.g+r.i)/max*100 : 0}%"></span></div></td>`;
+  const porP = agrupar(lista, c=>`${c._proy.codigo} · ${c._proy.nombre}`), maxP = porP[0] ? porP[0].g+porP[0].i : 0;
+  $('qPorProyecto').innerHTML = porP.map(r=>`<tr><td>${esc(r.clave)}</td><td class="num">${eur(r.g)}</td><td class="num">${eur(r.i)}</td><td class="num"><b>${eur(r.g+r.i)}</b></td>${filaBarra(r,maxP)}</tr>`).join('') || `<tr><td colspan="5" class="empty">Sin resultados</td></tr>`;
+  const porC = agrupar(lista, c=>c.categoria||'Sin categoría'), maxC = porC[0] ? porC[0].g+porC[0].i : 0;
+  $('qPorCategoria').innerHTML = porC.map(r=>`<tr><td>${esc(r.clave)}</td><td class="num">${eur(r.g)}</td><td class="num">${eur(r.i)}</td><td class="num"><b>${eur(r.g+r.i)}</b></td>${filaBarra(r,maxC)}</tr>`).join('') || `<tr><td colspan="5" class="empty">Sin resultados</td></tr>`;
+
+  $('qDetalle').innerHTML = lista.length ? lista.map(c=>`<tr><td>${fdate(c.fecha)}</td><td>${esc(c._proy.nombre)}</td>
+    <td><span class="badge ${c.tipo}">${c.tipo==='gasto'?'Gasto':'Inversión'}</span></td><td>${esc(c.categoria||'—')}</td>
+    <td>${esc(c.concepto)}</td><td>${esc(c.proveedor||'—')}</td><td>${esc(c.nro_factura||'—')}</td><td class="num">${eur(c.importe)}</td></tr>`).join('')
+    : `<tr><td colspan="8" class="empty">No hay movimientos con estos filtros.</td></tr>`;
+}
+function exportarCSV(){
+  if (!ULTIMA_CONSULTA.length) return toast('Primero hacé una consulta con resultados');
+  const cab = ['Fecha','Código','Proyecto','Marca','Líder','Tipo','Categoría','Concepto','Proveedor','Nº factura','Importe'];
+  const filas = ULTIMA_CONSULTA.map(c => [c.fecha, c._proy.codigo, c._proy.nombre, c._proy.marca, c._proy.lider, c.tipo, c.categoria, c.concepto, c.proveedor, c.nro_factura, String(c.importe).replace('.',',')]);
+  const csv = '\ufeff' + [cab, ...filas].map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `costos_proyectos_${hoy()}.csv`; a.click();
+}
+
+/* ---------------- Sugerencias (categorías / proveedores) ---------------- */
+async function cargarSugerencias(){
+  const { data } = await sb.from('proy_costos').select('categoria,proveedor');
+  const base = ['Materiales','Maquinaria','Servicios','Mano de obra','Viajes','Marketing','Formación','Certificaciones','Software'];
+  const cats = [...new Set([...base, ...(data||[]).map(d=>d.categoria).filter(Boolean)])].sort();
+  const provs = [...new Set((data||[]).map(d=>d.proveedor).filter(Boolean))].sort();
+  $('dlCategorias').innerHTML = cats.map(c=>`<option value="${esc(c)}">`).join('');
+  $('dlProveedores').innerHTML = provs.map(c=>`<option value="${esc(c)}">`).join('');
+  const cur = $('qCategoria').value;
+  llenarSelect($('qCategoria'), cats.map(c=>[c,c]), 'Todas'); $('qCategoria').value = cur;
+}
+
+/* ---------------- Informes (sin costos / con costos) ---------------- */
+async function generarInforme(conCostos){
+  if (!ACTUAL) return;
+  const btn = conCostos ? $('btnInfCon') : $('btnInfSin');
+  btn.disabled = true; toast('Preparando informe…');
+  try {
+    // datos frescos
+    const [acc, adj, cos, ter] = await Promise.all([
+      sb.from('proy_acciones').select('*').eq('proyecto_id', ACTUAL.id).order('fecha',{ascending:true}).order('id',{ascending:true}),
+      sb.from('proy_adjuntos').select('*').eq('proyecto_id', ACTUAL.id).order('id'),
+      conCostos ? sb.from('proy_costos').select('*').eq('proyecto_id', ACTUAL.id).order('fecha',{ascending:true}) : Promise.resolve({data:[]}),
+      sb.from('proy_terceros').select('*').eq('proyecto_id', ACTUAL.id).order('tipo').order('nombre')
+    ]);
+    if (acc.error) return fail(acc.error);
+    const acciones = acc.data || [], adjuntos = adj.data || [], costos = cos.data || [], terceros = ter.data || [];
+    const urls = {};
+    const imgs = adjuntos.filter(a => esImg(a.tipo_mime));
+    if (imgs.length) {
+      const { data: firm } = await sb.storage.from(CONFIG.BUCKET).createSignedUrls(imgs.map(a=>a.ruta), 3600);
+      (firm||[]).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
+    }
+    const porAccion = {}; adjuntos.forEach(a => (porAccion[a.accion_id] ||= []).push(a));
+    const p = ACTUAL;
+    const ahora = new Date().toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'});
+
+    let html = `
+      <div class="rh">
+        <div><div class="t">Informe de proyecto ${conCostos ? 'con costos' : 'sin costos'}</div>
+          <h1>${esc(p.nombre)}</h1><div>${esc(p.codigo)}</div></div>
+        <div class="em">Emitido el ${ahora}${USER ? `<br>por ${esc(USER)}` : ''}</div>
+      </div>
+      <h2>Datos del proyecto</h2>
+      <dl>
+        <dt>Líder</dt><dd>${esc(p.lider)}</dd><dt>Estado</dt><dd>${ESTADOS[p.estado]||esc(p.estado)}</dd>
+        <dt>Marca</dt><dd>${esc(p.marca||'—')}</dd><dt>Prioridad</dt><dd>${esc((p.prioridad||'media').replace(/^./,c=>c.toUpperCase()))}</dd>
+        <dt>Inicio</dt><dd>${fdate(p.fecha_inicio)}</dd><dt>Fin previsto</dt><dd>${fdate(p.fecha_fin_prev)}</dd>
+        ${p.fecha_fin_real ? `<dt>Fin real</dt><dd>${fdate(p.fecha_fin_real)}</dd><dt></dt><dd></dd>` : ''}
+      </dl>
+      ${p.descripcion ? `<h2>Descripción</h2><div class="desc">${esc(p.descripcion)}</div>` : ''}`;
+
+    if (terceros.length) {
+      html += `<h2>Clientes y fabricantes</h2><table><thead><tr><th>Tipo</th><th>Nombre</th><th>Contacto</th><th>Email</th><th>Teléfono</th></tr></thead><tbody>` +
+        terceros.map(t => `<tr><td>${esc(t.tipo[0].toUpperCase()+t.tipo.slice(1))}</td><td>${esc(t.nombre)}</td><td>${esc(t.contacto||'—')}</td><td>${esc(t.email||'—')}</td><td>${esc(t.telefono||'—')}</td></tr>`).join('') +
+        `</tbody></table>`;
+    }
+
+    html += `<h2>Bitácora de acciones (${acciones.length})</h2>` + (acciones.length ? acciones.map(a => {
+      const l = porAccion[a.id] || [];
+      const fotos = l.filter(x => esImg(x.tipo_mime) && urls[x.ruta]);
+      const docs = l.filter(x => !esImg(x.tipo_mime) || !urls[x.ruta]);
+      return `<div class="acc"><div class="f">${fdate(a.fecha)}${a.responsable ? `  |  ${esc(a.responsable)}` : ''}</div>
+        <div class="d">${esc(a.descripcion)}</div>
+        ${fotos.length ? `<div class="fotos">${fotos.map(x=>`<img src="${urls[x.ruta]}" alt="${esc(x.nombre)}">`).join('')}</div>` : ''}
+        ${docs.length ? `<div class="docs">Documentos adjuntos: ${docs.map(x=>esc(x.nombre)).join(', ')}</div>` : ''}</div>`;
+    }).join('') : `<p>Sin acciones registradas.</p>`);
+
+    if (conCostos) {
+      const g = costos.filter(c=>c.tipo==='gasto').reduce((s,c)=>s+Number(c.importe),0);
+      const inv = costos.filter(c=>c.tipo==='inversion').reduce((s,c)=>s+Number(c.importe),0);
+      const pres = Number(p.presupuesto)||0;
+      html += `<h2>Resumen económico</h2><div class="kpis">
+          <div><small>Gastos</small><b>${eur(g)}</b></div>
+          <div><small>Inversiones</small><b>${eur(inv)}</b></div>
+          <div><small>Total</small><b>${eur(g+inv)}</b></div>
+          <div><small>Presupuesto</small><b>${pres ? eur(pres) : '—'}</b>${pres ? `<small>Usado: ${Math.round((g+inv)/pres*100)}%</small>` : ''}</div>
+        </div>`;
+      if (costos.length) {
+        const cats = agrupar(costos, c=>c.categoria||'Sin categoría');
+        html += `<h2>Por categoría</h2><table><thead><tr><th>Categoría</th><th class="num">Gastos</th><th class="num">Inversiones</th><th class="num">Total</th></tr></thead><tbody>` +
+          cats.map(r=>`<tr><td>${esc(r.clave)}</td><td class="num">${eur(r.g)}</td><td class="num">${eur(r.i)}</td><td class="num">${eur(r.g+r.i)}</td></tr>`).join('') + `</tbody></table>`;
+        html += `<h2>Detalle de gastos e inversiones</h2><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th>Proveedor</th><th>Factura</th><th class="num">Importe</th></tr></thead><tbody>` +
+          costos.map(c=>`<tr><td>${fdate(c.fecha)}</td><td>${c.tipo==='gasto'?'Gasto':'Inversión'}</td><td>${esc(c.categoria||'—')}</td><td>${esc(c.concepto)}</td><td>${esc(c.proveedor||'—')}</td><td>${esc(c.nro_factura||'—')}</td><td class="num">${eur(c.importe)}</td></tr>`).join('') +
+          `</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">${eur(g+inv)}</td></tr></tfoot></table>`;
+      } else html += `<p>Sin gastos ni inversiones registrados.</p>`;
+    }
+    html += `<div class="pie">${esc(p.codigo)}  |  ${esc(p.nombre)}  |  Bauer Lemans, uso interno</div>`;
+
+    const rep = $('printReport');
+    rep.innerHTML = html;
+    // esperar a que carguen las fotos (máx. 8 s)
+    await Promise.race([
+      Promise.all([...rep.querySelectorAll('img')].map(im => im.complete ? 1 : new Promise(r => { im.onload = im.onerror = r; }))),
+      new Promise(r => setTimeout(r, 8000))
+    ]);
+    const tituloOrig = document.title;
+    document.title = `${p.codigo} ${p.nombre} - informe ${conCostos ? 'con' : 'sin'} costos`;
+    document.body.classList.add('rep-mode');
+    const limpiar = () => { document.body.classList.remove('rep-mode'); document.title = tituloOrig; rep.innerHTML = ''; window.removeEventListener('afterprint', limpiar); };
+    window.addEventListener('afterprint', limpiar);
+    window.print();
+  } catch(e) { fail(e); }
+  finally { btn.disabled = false; }
+}
+
+init();
+</script>
+</body>
+</html>
